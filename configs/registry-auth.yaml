@@ -1,0 +1,19 @@
+server:
+  addr: ":5001"
+
+token:
+  issuer: "Acme auth server"
+  expiration: 900
+  certificate: /certs/cert.pem
+  key: /certs/cert.key
+
+users:
+  "ci":
+    password: ""
+  "": {}  
+
+acl:
+  - match: { account: "/.+/" }
+    actions: ["*"]
+  - match: { account: "" }
+    actions: ["pull"]

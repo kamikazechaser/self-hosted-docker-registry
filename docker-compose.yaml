@@ -1,0 +1,90 @@
+version: '3'
+services:
+  traefik:
+    restart: always
+    image: traefik:2.5
+    container_name: traefik
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --certificatesresolvers.le.acme.email=$EMAIL
+      - --certificatesresolvers.le.acme.storage=/le/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --api=true
+      - --log=true
+      - --log.level=ERROR
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik.$DOMAIN`)
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.tls=true
+      - traefik.http.routers.traefik.tls.certresolver=le
+    volumes:
+      - './letsencrypt:/le'
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+# --------------------------------------------------------------------------------      
+  registry:
+    restart: always
+    image: registry:2.7.1
+    container_name: registry
+    depends_on:
+      - traefik
+    ports:
+      - '5000'
+    labels:
+      - traefik.enable=true
+      - traefik.port=5000
+      - traefik.http.routers.registry.rule=Host(`docker.$DOMAIN`)
+      - traefik.http.routers.registry.tls=true
+      - traefik.http.routers.registry.tls.certresolver=le
+    volumes:
+      - ./registry_data:/var/lib/registry
+      - ./configs/registry-config.yaml:/etc/docker/registry/config.yml
+      - ./configs/certs:/certs
+  registry-ui:
+    restart: always
+    image: quiq/docker-registry-ui:0.9.3
+    container_name: registry-ui
+    depends_on:
+      - "registry"
+      - "registry-auth"
+    ports:
+      - '8000'
+    labels:
+      - traefik.enable=true
+      - traefik.port=8000
+      - traefik.http.routers.registry-ui-anon.rule=Host(`hub.$DOMAIN`)
+      - traefik.http.routers.registry-ui-anon.tls=true
+      - traefik.http.routers.registry-ui-anon.tls.certresolver=le
+    volumes:
+      - ./configs/registry-ui-config.yaml:/opt/config.yml:ro
+  registry-auth:
+    image: cesanta/docker_auth:1.8
+    container_name: registry-auth
+    depends_on:
+      - registry
+    command:
+      - --v=2
+      - --alsologtostderr
+      - /config/auth_config.yml    
+    container_name: registry-auth
+    ports:
+      - '5001'
+    labels:
+      - traefik.enable=true
+      - traefik.port=5001
+      - traefik.http.routers.registry-auth.rule=Host(`docker-auth.$DOMAIN`)
+      - traefik.http.routers.registry-auth.tls=true
+      - traefik.http.routers.registry-auth.tls.certresolver=le
+    volumes:
+      - ./configs/registry-auth.yaml:/config/auth_config.yml
+      - ./data/auth-logs:/logs
+      - ./configs/certs:/certs

@@ -1,0 +1,15 @@
+listen_addr: 0.0.0.0:8000
+base_path: /
+registry_url: http://registry:5000
+# replace with CI credentials here in plain text
+registry_username: 
+registry_password: 
+event_listener_token: token
+event_retention_days: 7
+event_database_driver: sqlite3
+event_database_location: data/registry_events.db
+cache_refresh_interval: 1
+anyone_can_delete: false
+admins: []
+debug: true
+purge_tags_keep_days: 40

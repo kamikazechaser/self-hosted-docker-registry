@@ -1,0 +1,36 @@
+version: 0.1
+log:
+  fields:
+    service: registry
+storage:
+  cache:
+    blobdescriptor: inmemory
+  filesystem:
+    rootdirectory: /var/lib/registry
+http:
+  secret: someLongAndRandomSecretHere
+  addr: :5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3
+auth:
+  token:
+    realm: 'https://docker-auth.$DOMAIN/auth'
+    service: 'Docker registry'
+    issuer: 'Acme auth server'
+    rootcertbundle: '/certs/cert.pem'
+notifications:
+  endpoints:
+    - name: docker-registry-ui
+      url: http://registry-ui:8000/api/events
+      headers:
+        Authorization: [Bearer token]
+      timeout: 1s
+      threshold: 5
+      backoff: 10s
+      ignoredmediatypes:
+        - application/octet-stream    
